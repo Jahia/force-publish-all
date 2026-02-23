@@ -19,4 +19,5 @@ node
 # Jahia DX Studio
 repository.xml.generated
 
-
+release.properties
+pom.xml.releaseBackup
