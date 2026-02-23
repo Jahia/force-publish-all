@@ -19,7 +19,7 @@ const ForcePublishAll = ({onClose, onExit, isOpen, path}) => {
                     <Button
                         size="big"
                         color="accent"
-                        data-cm-role="export-button"
+                        data-cm-role="force-publish-button"
                         label="Force Publish"
                         onClick={() => {
                             onClose();
