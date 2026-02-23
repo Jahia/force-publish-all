@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.json",
+  "include": [
+    "**/*/*.ts",
+    "support/e2e.js"
+  ],
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "noEmit": false,
+    "isolatedModules": false,
+    "types": [
+      "cypress",
+      "node",
+      "cypress-wait-until",
+      "@jahia/cypress"
+    ],
+    "lib": [ "es2015" ]
+  }
+}

@@ -1,0 +1,12 @@
+query getSiteByKey($siteKey: String!) {
+    jcr {
+        nodeByPath(path: $siteKey) {
+            uuid
+            name
+            property(name: "j:installedModules") {
+                values
+            }
+        }
+    }
+}
+
