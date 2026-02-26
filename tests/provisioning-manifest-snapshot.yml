@@ -1,7 +1,4 @@
 - karafCommand: "log:log 'START - Maven repositories configured'"
-- addMavenRepository: "https://devtools.jahia.com/nexus/content/groups/enterprise/@id=jahia-enterprise@snapshots"
-  username: ${env:NEXUS_USERNAME}
-  password: ${env:NEXUS_PASSWORD}
 - addMavenRepository: "https://devtools.jahia.com/nexus/content/repositories/jahia-public-app-store@id=store-jahia-com"
 - karafCommand: "log:log 'END - Maven repositories configured'"
 
@@ -31,7 +28,6 @@
   uninstallPreviousVersion: true
 - karafCommand: "log:log 'END - Install Digitall bundles'"
 
-# Import the Digitall site
 - karafCommand: "log:log 'START - Import Digitall site'"
 - import: "jar:mvn:org.jahia.modules/digitall/RELEASE/zip/import!/users.zip"
 - importSite: "jar:mvn:org.jahia.modules/digitall/RELEASE/zip/import!/Digitall.zip"
