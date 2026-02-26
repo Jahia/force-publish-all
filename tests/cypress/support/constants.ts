@@ -1,4 +1,13 @@
 /**
- * forcePublishAll module identifier
+ * Shared test configuration for tests
+ * This file contains common constants used across multiple test files
  */
-export const FORCE_PUBLISH_ALL_MODULE_ID = 'forcePublishAll'
+
+export interface SiteConfig {
+    key: string
+    config: {
+        templateSet: string
+        serverName: string
+        locale: string
+    }
+}

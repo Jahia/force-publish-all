@@ -1,5 +1,5 @@
 {
-  "name": "keepicker-jahia-cypress",
+  "name": "forcePublishAll-jahia-cypress",
   "version": "0.1.0",
   "scripts": {
     "instrument": "nyc instrument --compact=false cypress instrumented",
