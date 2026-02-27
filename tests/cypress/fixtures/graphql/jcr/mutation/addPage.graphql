@@ -1,0 +1,19 @@
+mutation addPage($parentPath: String!, $nodeName: String!, $pageTitle: String!, $templateName: String!) {
+    jcr(workspace: EDIT) {
+        mutateNode(pathOrId: $parentPath) {
+            addChild(
+                name: $nodeName,
+                primaryNodeType: "jnt:page",
+                properties: [
+                    { name: "jcr:title", language: "en", value: $pageTitle }
+                    { name: "j:templateName", value: $templateName }
+                ]
+            ) {
+                node {
+                    uuid
+                    path
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,10 @@
+query($path: String!) {
+    jcr(workspace: LIVE) {
+        nodeByPath(path: $path) {
+            uuid
+            property(name:"jcr:title",language:"en"){
+        	    value
+            }
+        }
+    }
+}
