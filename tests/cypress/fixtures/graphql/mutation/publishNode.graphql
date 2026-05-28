@@ -1,0 +1,7 @@
+mutation PublishNode($path: String!, $languages: [String!]) {
+    jcr {
+        mutateNode(pathOrId: $path) {
+            publish(languages: $languages)
+        }
+    }
+}

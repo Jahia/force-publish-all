@@ -1,0 +1,7 @@
+mutation ForcePublishAll($path: String!) {
+    jcr {
+        mutateNode(pathOrId: $path) {
+            forcePublish
+        }
+    }
+}

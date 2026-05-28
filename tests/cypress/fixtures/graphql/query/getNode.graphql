@@ -1,0 +1,9 @@
+query GetNode($path: String!, $workspace: Workspace!) {
+    jcr(workspace: $workspace) {
+        nodeByPath(path: $path) {
+            uuid
+            path
+            displayName
+        }
+    }
+}
