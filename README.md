@@ -18,7 +18,7 @@ by first deleting everything in the live workspace and then republishing the ent
 ## Prerequisites
 
 - Java 11
-- Node.js v18.20.2
+- Node.js v20.18.1
 - Yarn v1.22.22
 - Maven 3.6.3 or higher
 
