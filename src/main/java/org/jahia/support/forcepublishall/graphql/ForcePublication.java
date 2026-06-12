@@ -4,13 +4,6 @@ import graphql.annotations.annotationTypes.GraphQLDescription;
 import graphql.annotations.annotationTypes.GraphQLField;
 import graphql.annotations.annotationTypes.GraphQLName;
 import graphql.annotations.annotationTypes.GraphQLTypeExtension;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import javax.jcr.AccessDeniedException;
-import javax.jcr.RepositoryException;
 import org.jahia.api.Constants;
 import org.jahia.exceptions.JahiaRuntimeException;
 import org.jahia.modules.graphql.provider.dxm.node.GqlJcrNode;
@@ -26,6 +19,10 @@ import org.quartz.JobDetail;
 import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.jcr.AccessDeniedException;
+import javax.jcr.RepositoryException;
+import java.util.*;
 
 @GraphQLTypeExtension(GqlJcrNodeMutation.class)
 public final class ForcePublication {
@@ -79,14 +76,14 @@ public final class ForcePublication {
                 final JobDetail jobDetail = BackgroundJob.createJahiaJob("Publication", PublicationJob.class);
                 final JobDataMap jobDataMap = jobDetail.getJobDataMap();
                 JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(null, Constants.LIVE_WORKSPACE, null, sessionWrapper -> {
-                    try{
-                    final JCRNodeWrapper node = sessionWrapper.getNodeByUUID(uuid);
-                    if (node != null) {
-                        node.remove();
-                        sessionWrapper.save();
-                        logger.info("Deleted node with UUID: {}, path {} in live workspace", uuid, path);
-                    }
-                    }catch(RepositoryException ex){
+                    try {
+                        final JCRNodeWrapper node = sessionWrapper.getNodeByUUID(uuid);
+                        if (node != null) {
+                            node.remove();
+                            sessionWrapper.save();
+                            logger.info("Deleted node with UUID: {}, path {} in live workspace", uuid, path);
+                        }
+                    } catch (RepositoryException ex) {
                         // ignore silently the exception
                     }
                     return null;
