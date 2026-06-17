@@ -5,7 +5,7 @@ import {Button} from '@jahia/moonstone';
 
 const ForcePublishAll = ({onClose, onExit, isOpen, path}) => {
     return (
-            <Dialog fullWidth open={isOpen} aria-labelledby="form-dialog-title" data-cm-role="export-options" onExited={onExit} onClose={onClose}>
+            <Dialog fullWidth open={isOpen} aria-labelledby="form-dialog-title" data-cm-role="export-options" onExited={onExit} onClose={onExit}>
                 <DialogTitle>
                     Force Publish All
                 </DialogTitle>
@@ -15,7 +15,7 @@ const ForcePublishAll = ({onClose, onExit, isOpen, path}) => {
                     </FormHelperText>
                 </DialogContent>
                 <DialogActions>
-                    <Button size="big" label="Cancel" onClick={onClose}/>
+                    <Button size="big" label="Cancel" onClick={onExit}/>
                     <Button
                         size="big"
                         color="accent"
