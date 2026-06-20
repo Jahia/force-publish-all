@@ -15,8 +15,15 @@ target
 node_modules
 node
 /src/main/resources/javascript/apps/
+coverage
+
+# Yarn Berry (build uses Yarn classic via frontend-maven-plugin)
+.yarn/
+.yarnrc.yml
+.pnp.*
 
 # Jahia DX Studio
 repository.xml.generated
 
 
+tests/yarn.lock

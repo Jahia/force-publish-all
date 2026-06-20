@@ -1,13 +1,16 @@
 {
   "label": {
-    "settings": {
-      "title": "systemInformation setting"
-    },
     "action": {
-      "title": "systemInformation - How to extend the ui ?"
-    },
-    "appsAccordion": {
-      "title": "systemInformation"
+      "forcePublishAll": "Force Publish All"
     }
+  },
+  "dialog": {
+    "title": "Force Publish All",
+    "consequence": "This will force-publish the selected path and ALL its descendants. This cannot be undone.",
+    "path": "Selected path: {{path}}",
+    "cancel": "Cancel",
+    "confirm": "Force Publish",
+    "success": "The selected path and all its descendants have been published.",
+    "error": "Force publish failed. Please try again or contact your administrator."
   }
 }
