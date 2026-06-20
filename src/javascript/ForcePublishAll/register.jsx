@@ -1,16 +1,13 @@
 import React from 'react';
-import {
-        registry
-        } from '@jahia/ui-extender';
-import {CloudUpload} from "@jahia/moonstone";
-import {ForcePublishAllActionComponent} from "./ForcePublishAllComponent";
+import {registry} from '@jahia/ui-extender';
+import {CloudUpload} from '@jahia/moonstone';
+import {ForcePublishAllActionComponent} from './ForcePublishAllComponent';
 
 export default function () {
-
     registry.add('action', 'forcePublishAll', {
         buttonIcon: <CloudUpload/>,
-        buttonLabel: 'Force Publish All',
-        buttonLabelShort: 'Force Publish All',
+        buttonLabel: 'force-publish-all:label.action.forcePublishAll',
+        buttonLabelShort: 'force-publish-all:label.action.forcePublishAll',
         targets: ['publishMenu:99'],
         component: ForcePublishAllActionComponent
     });

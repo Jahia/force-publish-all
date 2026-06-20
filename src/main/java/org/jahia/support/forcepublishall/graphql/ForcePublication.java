@@ -122,9 +122,10 @@ public final class ForcePublication {
             throw new AccessDeniedException("Permission '" + PERMISSION_SITE_ADMIN + "' is required to force-publish node: " + nodeToPublish.getPath());
         }
 
+        final String uuid = nodeToPublish.getIdentifier();
+        final String path = nodeToPublish.getPath();
+
         try {
-            final String uuid = nodeToPublish.getIdentifier();
-            final String path = nodeToPublish.getPath();
             final Set<String> activeLiveLanguagesSet = nodeToPublish.getResolveSite().getActiveLiveLanguages();
             final JCRSessionWrapper session = JCRSessionFactory.getInstance().getCurrentUserSession(Constants.EDIT_WORKSPACE);
 
@@ -166,8 +167,7 @@ public final class ForcePublication {
             logger.info("Scheduling publication job for node with UUID: {}, path {}, will publish {} nodes in {} languages", uuid, path, allUuids.size(), activeLiveLanguagesSet.size());
             schedulerService.scheduleJobNow(jobDetail);
         } catch (RepositoryException | SchedulerException e) {
-            logger.error("Force publication failed for path {}", nodeMutation.getNode().getNode().getPath(), e);
-            throw new JahiaRuntimeException(e);
+            throw new JahiaRuntimeException("Force publication failed for node UUID: " + uuid + ", path: " + path, e);
         }
 
         return true;

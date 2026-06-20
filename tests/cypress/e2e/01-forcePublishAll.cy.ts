@@ -39,23 +39,25 @@ describe('Force Publish All', () => {
         cy.apollo({ query: getNode, variables: { path: targetPath, workspace: 'EDIT' } })
             .its('data.jcr.nodeByPath')
             .should((node: { uuid: string; path: string }) => {
-                expect(node).to.not.be.null
+                expect(node, `node ${targetPath} must exist in EDIT before the suite runs`).to.not.be.null
                 expect(node.path).to.equal(targetPath)
                 expect(node.uuid).to.be.a('string')
             })
     })
 
     it('forcePublish returns true on a published sub-tree', () => {
-        // Ensure the sub-tree is published first so the "delete in live then re-publish" path is exercised
+        // Ensure the sub-tree is published first so the "delete in live then re-publish" path is exercised.
+        // Chain each step so the wait only runs after the preceding mutation/query has resolved.
         cy.apollo({ mutation: publishNode, variables: { path: targetPath, languages: ['en'] } })
-        waitForNodeInLive(targetPath)
-
-        cy.apollo({ mutation: forcePublishAll, variables: { path: targetPath } })
-            .its('data.jcr.mutateNode.forcePublish')
-            .should('eq', true)
-
-        // After forcePublish, the node should once again be available in LIVE
-        waitForNodeInLive(targetPath)
+            .then(() => waitForNodeInLive(targetPath))
+            .then(() =>
+                cy
+                    .apollo({ mutation: forcePublishAll, variables: { path: targetPath } })
+                    .its('data.jcr.mutateNode.forcePublish')
+                    .should('eq', true),
+            )
+            // After forcePublish, the node should once again be available in LIVE
+            .then(() => waitForNodeInLive(targetPath))
     })
 
     it('forcePublish returns true on an unpublished node and publishes it to LIVE', () => {
@@ -65,12 +67,13 @@ describe('Force Publish All', () => {
         cy.apollo({ query: getNode, variables: { path: subPath, workspace: 'EDIT' } })
             .its('data.jcr.nodeByPath')
             .should('not.be.null')
-
-        cy.apollo({ mutation: forcePublishAll, variables: { path: subPath } })
-            .its('data.jcr.mutateNode.forcePublish')
-            .should('eq', true)
-
-        waitForNodeInLive(subPath)
+            .then(() =>
+                cy
+                    .apollo({ mutation: forcePublishAll, variables: { path: subPath } })
+                    .its('data.jcr.mutateNode.forcePublish')
+                    .should('eq', true),
+            )
+            .then(() => waitForNodeInLive(subPath))
     })
 
     it('forcePublish fails on a path that does not exist', () => {

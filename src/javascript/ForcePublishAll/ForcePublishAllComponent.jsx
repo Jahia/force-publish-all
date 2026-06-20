@@ -3,9 +3,8 @@ import ForcePublishAll from './ForcePublishAll';
 import {ComponentRendererContext, registry} from '@jahia/ui-extender';
 import {useNodeChecks} from '@jahia/data-helper';
 import PropTypes from 'prop-types';
-import {ForcePublishAllMutation} from "./forcePublishAll.gql-mutation";
-import {useApolloClient, useMutation} from "@apollo/react-hooks";
-
+import {ForcePublishAllMutation} from './forcePublishAll.gql-mutation';
+import {useApolloClient, useMutation} from '@apollo/react-hooks';
 
 const triggerRefetch = (name, queryParams) => {
     const refetch = registry.get('refetcher', name);
@@ -26,41 +25,55 @@ const triggerRefetchAll = () => {
 
 export const ForcePublishAllActionComponent = ({path, render: Render, loading: Loading, ...others}) => {
     const componentRenderer = useContext(ComponentRendererContext);
-    const res = useNodeChecks({path}, {...others, requiredPermission: ['publish','site-admin']});
+    const res = useNodeChecks({path}, {...others, requiredPermission: ['publish', 'site-admin']});
     const client = useApolloClient();
-    const [mutation, {called: mutationLoading}] = useMutation(ForcePublishAllMutation);
+    const [mutation, {loading: mutationLoading}] = useMutation(ForcePublishAllMutation);
     if (res.loading) {
         return (Loading && <Loading {...others}/>) || false;
     }
 
-    const hanleClose = () => {
-        mutation({
+    // Pure cancel: close the dialog WITHOUT mutating.
+    const handleClose = () => {
+        componentRenderer.setProperties('forcePublishAllDialog', {isOpen: false});
+    };
+
+    // Confirm: run the destructive mutation, with explicit error handling.
+    const handleConfirm = () => {
+        componentRenderer.setProperties('forcePublishAllDialog', {status: null, errorMessage: null});
+        return mutation({
             variables: {
                 path: path
             }
-        }).then(() => {
-            componentRenderer.setProperties('forcePublishAllDialog', {isOpen: false});
-        }).then(() => {
+        }).then(result => {
+            if (result && result.errors && result.errors.length > 0) {
+                componentRenderer.setProperties('forcePublishAllDialog', {status: 'error'});
+                return;
+            }
+
             client.cache.flushNodeEntryByPath(path);
             triggerRefetchAll();
+            componentRenderer.setProperties('forcePublishAllDialog', {status: 'success', isOpen: false});
+        }).catch(() => {
+            componentRenderer.setProperties('forcePublishAllDialog', {status: 'error'});
         });
     };
+
     return (
         <Render
             {...others}
             isVisible={res.checksResult}
             onClick={() => {
                 componentRenderer.render('forcePublishAllDialog', ForcePublishAll, {
-                        isOpen: true,
-                        path: res.node.path,
-                        onClose: () => {
-                            hanleClose();
-                        },
-                        onExit: () => {
-                            componentRenderer.destroy('forcePublishAllDialog');
-                        }
+                    isOpen: true,
+                    isLoading: mutationLoading,
+                    status: null,
+                    path: res.node.path,
+                    onConfirm: handleConfirm,
+                    onClose: handleClose,
+                    onExit: () => {
+                        componentRenderer.destroy('forcePublishAllDialog');
                     }
-                );
+                });
             }}
         />
     );

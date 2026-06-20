@@ -1,0 +1,16 @@
+{
+  "label": {
+    "action": {
+      "forcePublishAll": "Tout forcer la publication"
+    }
+  },
+  "dialog": {
+    "title": "Tout forcer la publication",
+    "consequence": "Cette action va forcer la publication du chemin sélectionné et de TOUS ses descendants. Elle est irréversible.",
+    "path": "Chemin sélectionné : {{path}}",
+    "cancel": "Annuler",
+    "confirm": "Forcer la publication",
+    "success": "Le chemin sélectionné et tous ses descendants ont été publiés.",
+    "error": "La publication forcée a échoué. Veuillez réessayer ou contacter votre administrateur."
+  }
+}
