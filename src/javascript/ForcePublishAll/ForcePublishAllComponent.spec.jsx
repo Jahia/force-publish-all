@@ -152,7 +152,7 @@ describe('ForcePublishAllActionComponent', () => {
         await renderer.getProps().onConfirm();
 
         // Error status was set...
-        expect(renderer.setProperties).toHaveBeenCalledWith('forcePublishAllDialog', {status: 'error'});
+        expect(renderer.setProperties).toHaveBeenCalledWith('forcePublishAllDialog', {status: 'error', isLoading: false});
         // ...and success (which would close the dialog) was never reported.
         const successCall = renderer.setProperties.mock.calls.find(
             ([, patch]) => patch && patch.status === 'success'
@@ -168,7 +168,7 @@ describe('ForcePublishAllActionComponent', () => {
         renderAction(renderer);
         await renderer.getProps().onConfirm();
 
-        expect(renderer.setProperties).toHaveBeenCalledWith('forcePublishAllDialog', {status: 'error'});
+        expect(renderer.setProperties).toHaveBeenCalledWith('forcePublishAllDialog', {status: 'error', isLoading: false});
         const successCall = renderer.setProperties.mock.calls.find(
             ([, patch]) => patch && patch.status === 'success'
         );

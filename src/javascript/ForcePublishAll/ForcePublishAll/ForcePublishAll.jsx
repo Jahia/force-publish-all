@@ -6,6 +6,7 @@ import {useTranslation} from 'react-i18next';
 
 const TITLE_ID = 'force-publish-all-title';
 const DESC_ID = 'force-publish-all-description';
+const PATH_ID = 'force-publish-all-path';
 
 const ForcePublishAll = ({onClose, onConfirm, onExit, isOpen, path, isLoading, status}) => {
     const {t} = useTranslation('force-publish-all');
@@ -49,7 +50,7 @@ const ForcePublishAll = ({onClose, onConfirm, onExit, isOpen, path, isLoading, s
             open={isOpen}
             role="alertdialog"
             aria-labelledby={TITLE_ID}
-            aria-describedby={DESC_ID}
+            aria-describedby={`${DESC_ID} ${PATH_ID}`}
             transitionDuration={prefersReducedMotion ? 0 : undefined}
             data-cm-role="force-publish-dialog"
             onExited={restoreFocus}
@@ -62,7 +63,7 @@ const ForcePublishAll = ({onClose, onConfirm, onExit, isOpen, path, isLoading, s
                 <p id={DESC_ID}>
                     {t('dialog.consequence')}
                 </p>
-                <p>
+                <p id={PATH_ID}>
                     {t('dialog.path', {path})}
                 </p>
                 <output aria-live="polite" aria-atomic="true">

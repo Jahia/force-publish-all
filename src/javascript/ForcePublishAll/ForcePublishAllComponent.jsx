@@ -39,22 +39,24 @@ export const ForcePublishAllActionComponent = ({path, render: Render, loading: L
 
     // Confirm: run the destructive mutation, with explicit error handling.
     const handleConfirm = () => {
-        componentRenderer.setProperties('forcePublishAllDialog', {status: null, errorMessage: null});
+        // Drive isLoading via setProperties so the Confirm button actually disables
+        // while the mutation is in flight (the value captured at render() time is stale).
+        componentRenderer.setProperties('forcePublishAllDialog', {status: null, errorMessage: null, isLoading: true});
         return mutation({
             variables: {
                 path: path
             }
         }).then(result => {
             if (result && result.errors && result.errors.length > 0) {
-                componentRenderer.setProperties('forcePublishAllDialog', {status: 'error'});
+                componentRenderer.setProperties('forcePublishAllDialog', {status: 'error', isLoading: false});
                 return;
             }
 
             client.cache.flushNodeEntryByPath(path);
             triggerRefetchAll();
-            componentRenderer.setProperties('forcePublishAllDialog', {status: 'success', isOpen: false});
+            componentRenderer.setProperties('forcePublishAllDialog', {status: 'success', isOpen: false, isLoading: false});
         }).catch(() => {
-            componentRenderer.setProperties('forcePublishAllDialog', {status: 'error'});
+            componentRenderer.setProperties('forcePublishAllDialog', {status: 'error', isLoading: false});
         });
     };
 
