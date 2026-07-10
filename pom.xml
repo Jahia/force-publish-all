@@ -114,6 +114,58 @@
                     <useModulePath>false</useModulePath>
                 </configuration>
             </plugin>
+            <!--
+                jacoco-maven-plugin: line-coverage gate scoped to ForcePublication only.
+                - ForcePublishAllGraphQLExtensionsProvider is a one-line provider: excluded from the gate.
+                - The branch "if (node != null)" (ForcePublication line ~138) is unreachable dead code
+                  (JCRSessionWrapper.getNodeByUUID throws ItemNotFoundException, never returns null),
+                  which is why the rule uses a LINE counter and deliberately sets no BRANCH limit.
+                Run with: mvn clean test -P java-only
+            -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>CLASS</element>
+                                    <includes>
+                                        <include>org.jahia.support.forcepublishall.graphql.ForcePublication</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>

@@ -9,7 +9,10 @@ const DESC_ID = 'force-publish-all-description';
 const PATH_ID = 'force-publish-all-path';
 
 const ForcePublishAll = ({onClose, onConfirm, onExit, isOpen, path, isLoading, status}) => {
-    const {t} = useTranslation('force-publish-all');
+    // Namespace must match the deployed module ID ("forcePublishAll") so that i18next's HTTP
+    // backend resolves it to /modules/forcePublishAll/javascript/locales/<lng>.json (verified:
+    // the kebab-case 'force-publish-all' 404s — see SUPPORT-646 execution/bugfix reports).
+    const {t} = useTranslation('forcePublishAll');
 
     // Capture the element that had focus when the dialog opened so we can
     // restore focus to it once the dialog is dismissed (WCAG 2.2 focus management).

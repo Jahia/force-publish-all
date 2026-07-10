@@ -41,6 +41,14 @@
     "moduleNameMapper": {
       "\\.(scss|css)$": "identity-obj-proxy"
     },
+    "coverageThreshold": {
+      "./src/javascript/ForcePublishAll/": {
+        "statements": 90,
+        "branches": 80,
+        "functions": 90,
+        "lines": 90
+      }
+    },
     "transform": {
       "^.+\\.jsx?$": [
         "babel-jest",
