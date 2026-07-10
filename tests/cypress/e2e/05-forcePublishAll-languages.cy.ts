@@ -44,7 +44,12 @@ describe('Force Publish All - active live languages', () => {
 
     before(() => {
         cy.login();
-        createSite(siteKey, {languages: 'en,fr', templateSet: 'dx-base-demo-templates', serverName: 'localhost', locale: 'en'});
+        createSite(siteKey, {
+            languages: 'en,fr',
+            templateSet: 'dx-base-demo-templates',
+            serverName: 'localhost',
+            locale: 'en'
+        });
         // Flag fr as INACTIVE in live: it must never be published
         cy.apollo({mutation: setSiteInactiveLiveLanguages, variables: {sitePath, languages: ['fr']}});
         // A text content carrying BOTH an en and a fr translation in EDIT
@@ -75,7 +80,10 @@ describe('Force Publish All - active live languages', () => {
 
         // Assert: the en translation is published...
         waitForPropertyInLive(textPath, 'text', 'en');
-        cy.apollo({query: getNodeWithProperty, variables: {path: textPath, workspace: 'LIVE', property: 'text', language: 'en'}})
+        cy.apollo({
+            query: getNodeWithProperty,
+            variables: {path: textPath, workspace: 'LIVE', property: 'text', language: 'en'}
+        })
             .its('data.jcr.nodeByPath.property.value')
             .should('eq', 'English content S9');
 
