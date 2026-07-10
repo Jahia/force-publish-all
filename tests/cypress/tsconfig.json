@@ -11,8 +11,10 @@
     "types": [
       "cypress",
       "node",
-      "@jahia/cypress"
+      "@jahia/cypress",
+      "cypress-wait-until"
     ],
-    "lib": [ "es2015" ]
+    "skipLibCheck": true,
+    "lib": [ "es2015", "dom" ]
   }
 }
