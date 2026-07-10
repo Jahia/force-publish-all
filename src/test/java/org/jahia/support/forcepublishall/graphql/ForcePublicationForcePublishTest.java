@@ -2,6 +2,7 @@ package org.jahia.support.forcepublishall.graphql;
 
 import org.jahia.api.Constants;
 import org.jahia.exceptions.JahiaRuntimeException;
+import org.jahia.modules.graphql.provider.dxm.DataFetchingException;
 import org.jahia.modules.graphql.provider.dxm.node.GqlJcrNode;
 import org.jahia.modules.graphql.provider.dxm.node.GqlJcrNodeMutation;
 import org.jahia.osgi.BundleUtils;
@@ -30,7 +31,7 @@ import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.SchedulerException;
 
-import javax.jcr.AccessDeniedException;
+import javax.jcr.InvalidItemStateException;
 import javax.jcr.ItemNotFoundException;
 import javax.jcr.RepositoryException;
 import java.util.Arrays;
@@ -244,16 +245,18 @@ class ForcePublicationForcePublishTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("forcePublish throws AccessDeniedException naming 'publish' and never checks site-admin")
+    @DisplayName("forcePublish throws DataFetchingException naming 'publish' and never checks site-admin")
     void forcePublish_publishPermissionMissing_deniesWithoutCheckingSiteAdmin() throws RepositoryException {
         // Arrange
         stubOsgiServicesAvailable();
         when(nodeToPublish.hasPermission("publish")).thenReturn(false);
         when(nodeToPublish.getPath()).thenReturn(NODE_PATH);
 
-        // Act
-        AccessDeniedException exception = assertThrows(
-                AccessDeniedException.class,
+        // Act: DataFetchingException (not a plain AccessDeniedException) so the GraphQL layer
+        // forwards the message verbatim to the client instead of masking it as a generic
+        // "Internal Server Error(s)" (execution finding, SUPPORT-646, spec S5).
+        DataFetchingException exception = assertThrows(
+                DataFetchingException.class,
                 () -> newForcePublication().forcePublish());
 
         // Assert: exact message, and 'publish' is checked first (F4 ordering).
@@ -262,7 +265,7 @@ class ForcePublicationForcePublishTest {
     }
 
     @Test
-    @DisplayName("forcePublish throws AccessDeniedException naming 'site-admin' and runs nothing past the guard")
+    @DisplayName("forcePublish throws DataFetchingException naming 'site-admin' and runs nothing past the guard")
     void forcePublish_siteAdminPermissionMissing_deniesBeforeAnySideEffect() throws RepositoryException {
         // Arrange
         stubOsgiServicesAvailable();
@@ -271,8 +274,8 @@ class ForcePublicationForcePublishTest {
         when(nodeToPublish.getPath()).thenReturn(NODE_PATH);
 
         // Act
-        AccessDeniedException exception = assertThrows(
-                AccessDeniedException.class,
+        DataFetchingException exception = assertThrows(
+                DataFetchingException.class,
                 () -> newForcePublication().forcePublish());
 
         // Assert: exact message, and nothing past the guard ran (UUID never read,
@@ -338,9 +341,11 @@ class ForcePublicationForcePublishTest {
         when(liveSession.getNodeByUUID(NODE_UUID)).thenReturn(liveNode);
         doThrow(new RepositoryException("integrity")).when(liveNode).remove();
 
-        // Act
-        JahiaRuntimeException exception = assertThrows(
-                JahiaRuntimeException.class,
+        // Act: DataFetchingException (a JahiaRuntimeException subtype) so this message also
+        // reaches the client verbatim instead of being masked (execution finding, SUPPORT-646,
+        // spec S5's investigation).
+        DataFetchingException exception = assertThrows(
+                DataFetchingException.class,
                 () -> newForcePublication().forcePublish());
 
         // Assert: message carries the UUID, the path and the abort statement.
@@ -349,6 +354,65 @@ class ForcePublicationForcePublishTest {
         assertTrue(exception.getMessage().contains(NODE_UUID));
         assertTrue(exception.getMessage().contains(NODE_PATH));
         assertTrue(exception.getMessage().contains("publication job was not scheduled"));
+        verifyNoInteractions(schedulerService);
+        verifyNoInteractions(complexPublicationService);
+    }
+
+    // -------------------------------------------------------------------------
+    // Live-delete retry on transient stale-item conflicts (execution finding,
+    // SUPPORT-646, spec 01): a concurrent PublicationJob on an overlapping path can leave
+    // the LIVE session transiently stale; forcePublish should refresh and retry a bounded
+    // number of times rather than aborting on the first conflict.
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("forcePublish refreshes and retries the live delete after a transient stale-item conflict, then succeeds")
+    void forcePublish_liveDeleteStaleItemThenSucceeds_retriesAndSchedulesJob() throws Exception {
+        // Arrange: the first remove() attempt hits a stale item, the second succeeds.
+        openHappyPathScaffold();
+        when(liveSession.getNodeByUUID(NODE_UUID)).thenReturn(liveNode);
+        doThrow(new InvalidItemStateException("stale"))
+                .doNothing()
+                .when(liveNode).remove();
+        when(complexPublicationService.getFullPublicationInfos(
+                eq(Collections.singletonList(NODE_UUID)), eq(activeLiveLanguages()), eq(true), eq(editSession)))
+                .thenReturn(Collections.emptyList());
+
+        // Act
+        Boolean result = newForcePublication().forcePublish();
+
+        // Assert: one refresh (for the single retry), the node removed twice (failed + retried
+        // attempt), then the job scheduled normally.
+        assertEquals(Boolean.TRUE, result);
+        verify(liveSession, times(1)).refresh(false);
+        verify(liveNode, times(2)).remove();
+        verify(liveSession).save();
+        verify(schedulerService).scheduleJobNow(any(JobDetail.class));
+    }
+
+    @Test
+    @DisplayName("forcePublish aborts after exhausting live-delete retries on repeated stale-item conflicts")
+    void forcePublish_liveDeleteStaleItemExhaustsRetries_abortsWithoutSchedulingJob() throws Exception {
+        // Arrange: every attempt hits a stale item.
+        openHappyPathScaffold();
+        when(liveSession.getNodeByUUID(NODE_UUID)).thenReturn(liveNode);
+        doThrow(new InvalidItemStateException("stale")).when(liveNode).remove();
+
+        // Act
+        DataFetchingException exception = assertThrows(
+                DataFetchingException.class,
+                () -> newForcePublication().forcePublish());
+
+        // Assert: same abort message as any other live-delete failure (S17), exactly 4
+        // refreshes (retries before the 5th and final attempt), delete tried 5 times, no job
+        // scheduled.
+        assertTrue(exception.getMessage().startsWith("Live-workspace deletion failed for node UUID:"),
+                "Unexpected message: " + exception.getMessage());
+        assertTrue(exception.getMessage().contains(NODE_UUID));
+        assertTrue(exception.getMessage().contains(NODE_PATH));
+        verify(liveSession, times(4)).refresh(false);
+        verify(liveNode, times(5)).remove();
+        verify(liveSession, never()).save();
         verifyNoInteractions(schedulerService);
         verifyNoInteractions(complexPublicationService);
     }
