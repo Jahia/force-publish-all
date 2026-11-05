@@ -6,6 +6,7 @@ import graphql.annotations.annotationTypes.GraphQLName;
 import graphql.annotations.annotationTypes.GraphQLTypeExtension;
 import org.jahia.api.Constants;
 import org.jahia.exceptions.JahiaRuntimeException;
+import org.jahia.modules.graphql.provider.dxm.DataFetchingException;
 import org.jahia.modules.graphql.provider.dxm.node.GqlJcrNode;
 import org.jahia.modules.graphql.provider.dxm.node.GqlJcrNodeMutation;
 import org.jahia.modules.graphql.provider.dxm.node.GqlJcrWrongInputException;
@@ -20,7 +21,7 @@ import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.jcr.AccessDeniedException;
+import javax.jcr.InvalidItemStateException;
 import javax.jcr.ItemNotFoundException;
 import javax.jcr.PathNotFoundException;
 import javax.jcr.RepositoryException;
@@ -45,6 +46,25 @@ public final class ForcePublication {
      * force-publication jobs in the Jahia scheduler UI.
      */
     private static final String JOB_LABEL_PUBLICATION = "Publication";
+
+    /**
+     * Bounded retry count for the live-workspace delete step when it hits an
+     * {@link InvalidItemStateException} (execution finding, SUPPORT-646, spec 01): a
+     * concurrent {@code PublicationJob} on an overlapping path can still be writing to the
+     * same LIVE session, causing a transient optimistic-concurrency conflict rather than a
+     * genuine failure. Kept small and bounded — this is a resilience fix, not a queuing
+     * redesign.
+     */
+    private static final int LIVE_DELETE_MAX_ATTEMPTS = 5;
+
+    /**
+     * Base backoff (multiplied by the attempt number) between live-delete retries. With
+     * {@link #LIVE_DELETE_MAX_ATTEMPTS} = 5 this gives a worst-case cumulative wait of
+     * 300 + 600 + 900 + 1200 = 3000ms, chosen to comfortably outlast the ~3s duration observed
+     * for a large (237-node) concurrent PublicationJob on an overlapping path (execution
+     * finding, SUPPORT-646, spec 01) while staying bounded.
+     */
+    private static final long LIVE_DELETE_RETRY_BACKOFF_MS = 300L;
 
     private final GqlJcrNodeMutation nodeMutation;
 
@@ -95,11 +115,18 @@ public final class ForcePublication {
      * content will be absent until a successful publication is triggered.
      *
      * @return {@code true} when the publication job has been successfully scheduled
-     * @throws AccessDeniedException    if the caller lacks {@code publish} or {@code site-admin} permission
-     * @throws JahiaRuntimeException    if a required OSGi service is unavailable, the live-delete
-     *                                  fails for a reason other than the node not existing in LIVE,
-     *                                  or an unexpected {@link RepositoryException} /
-     *                                  {@link SchedulerException} occurs
+     * @throws DataFetchingException    if the caller lacks {@code publish} or {@code site-admin}
+     *                                  permission, or the live-delete fails for a reason other
+     *                                  than the node not existing in LIVE. {@link DataFetchingException}
+     *                                  extends {@link org.jahia.modules.graphql.provider.dxm.BaseGqlClientException},
+     *                                  so its message is forwarded verbatim to GraphQL clients
+     *                                  instead of being masked as a generic "Internal Server
+     *                                  Error(s)" (see {@code JahiaDataFetchingExceptionHandler}) —
+     *                                  a plain {@link javax.jcr.AccessDeniedException} or
+     *                                  {@link JahiaRuntimeException} would not be (verified:
+     *                                  SUPPORT-646 execution/bugfix reports, spec S5).
+     * @throws JahiaRuntimeException    if a required OSGi service is unavailable, or an unexpected
+     *                                  {@link RepositoryException} / {@link SchedulerException} occurs
      */
     @GraphQLField
     @GraphQLName("forcePublish")
@@ -116,10 +143,10 @@ public final class ForcePublication {
 
         final JCRNodeWrapper nodeToPublish = nodeMutation.getNode().getNode();
         if (!nodeToPublish.hasPermission(PERMISSION_PUBLISH)) {
-            throw new AccessDeniedException("Permission '" + PERMISSION_PUBLISH + "' is required to force-publish node: " + nodeToPublish.getPath());
+            throw new DataFetchingException("Permission '" + PERMISSION_PUBLISH + "' is required to force-publish node: " + nodeToPublish.getPath());
         }
         if (!nodeToPublish.hasPermission(PERMISSION_SITE_ADMIN)) {
-            throw new AccessDeniedException("Permission '" + PERMISSION_SITE_ADMIN + "' is required to force-publish node: " + nodeToPublish.getPath());
+            throw new DataFetchingException("Permission '" + PERMISSION_SITE_ADMIN + "' is required to force-publish node: " + nodeToPublish.getPath());
         }
 
         final String uuid = nodeToPublish.getIdentifier();
@@ -133,25 +160,54 @@ public final class ForcePublication {
 
             final boolean[] liveDeleteFailed = {false};
             JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(null, Constants.LIVE_WORKSPACE, null, sessionWrapper -> {
-                try {
-                    final JCRNodeWrapper node = sessionWrapper.getNodeByUUID(uuid);
-                    if (node != null) {
-                        node.remove();
-                        sessionWrapper.save();
-                        logger.info("Deleted node with UUID: {}, path {} in live workspace", uuid, path);
+                for (int attempt = 1; attempt <= LIVE_DELETE_MAX_ATTEMPTS; attempt++) {
+                    try {
+                        final JCRNodeWrapper node = sessionWrapper.getNodeByUUID(uuid);
+                        if (node != null) {
+                            node.remove();
+                            sessionWrapper.save();
+                            logger.info("Deleted node with UUID: {}, path {} in live workspace", uuid, path);
+                        }
+                        return null;
+                    } catch (ItemNotFoundException | PathNotFoundException ex) {
+                        // Node does not yet exist in LIVE — safe to ignore and proceed with publication
+                        logger.debug("Node UUID: {}, path {} not found in live workspace, proceeding with publication", uuid, path);
+                        return null;
+                    } catch (InvalidItemStateException ex) {
+                        // Transient optimistic-concurrency conflict: a concurrent PublicationJob
+                        // on an overlapping path is still writing to this LIVE session. Refresh
+                        // and retry a bounded number of times before giving up (execution
+                        // finding, SUPPORT-646, spec 01).
+                        if (attempt == LIVE_DELETE_MAX_ATTEMPTS) {
+                            logger.error("Failed to delete node UUID: {}, path {} from live workspace after {} attempts due to repeated stale-item conflicts — aborting force publication", uuid, path, LIVE_DELETE_MAX_ATTEMPTS, ex);
+                            liveDeleteFailed[0] = true;
+                            return null;
+                        }
+                        logger.warn("Stale item deleting node UUID: {}, path {} from live workspace (attempt {}/{}) — refreshing and retrying", uuid, path, attempt, LIVE_DELETE_MAX_ATTEMPTS);
+                        try {
+                            sessionWrapper.refresh(false);
+                            Thread.sleep(LIVE_DELETE_RETRY_BACKOFF_MS * attempt);
+                        } catch (RepositoryException refreshEx) {
+                            logger.error("Failed to refresh live session after stale-item conflict for node UUID: {}, path {}", uuid, path, refreshEx);
+                            liveDeleteFailed[0] = true;
+                            return null;
+                        } catch (InterruptedException interruptedEx) {
+                            Thread.currentThread().interrupt();
+                            liveDeleteFailed[0] = true;
+                            return null;
+                        }
+                        // Loop again for the next attempt.
+                    } catch (RepositoryException ex) {
+                        logger.error("Failed to delete node UUID: {}, path {} from live workspace — aborting force publication", uuid, path, ex);
+                        liveDeleteFailed[0] = true;
+                        return null;
                     }
-                } catch (ItemNotFoundException | PathNotFoundException ex) {
-                    // Node does not yet exist in LIVE — safe to ignore and proceed with publication
-                    logger.debug("Node UUID: {}, path {} not found in live workspace, proceeding with publication", uuid, path);
-                } catch (RepositoryException ex) {
-                    logger.error("Failed to delete node UUID: {}, path {} from live workspace — aborting force publication", uuid, path, ex);
-                    liveDeleteFailed[0] = true;
                 }
                 return null;
             });
 
             if (liveDeleteFailed[0]) {
-                throw new JahiaRuntimeException("Live-workspace deletion failed for node UUID: " + uuid + ", path: " + path + " — publication job was not scheduled");
+                throw new DataFetchingException("Live-workspace deletion failed for node UUID: " + uuid + ", path: " + path + " — publication job was not scheduled");
             }
 
             final Collection<ComplexPublicationService.FullPublicationInfo> fullPublicationInfos = complexPublicationService.getFullPublicationInfos(Collections.singletonList(uuid), activeLiveLanguagesSet, true, session);

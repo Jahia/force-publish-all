@@ -1,0 +1,10 @@
+mutation AddNode($parentPath: String!, $name: String!, $nodeType: String!, $properties: [InputJCRProperty], $workspace: Workspace) {
+    jcr(workspace: $workspace) {
+        addNode(parentPathOrId: $parentPath, name: $name, primaryNodeType: $nodeType, properties: $properties) {
+            uuid
+            node {
+                path
+            }
+        }
+    }
+}

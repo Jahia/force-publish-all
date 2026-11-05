@@ -1,0 +1,7 @@
+mutation ForcePublishAllLive($path: String!) {
+    jcr(workspace: LIVE) {
+        mutateNode(pathOrId: $path) {
+            forcePublish
+        }
+    }
+}

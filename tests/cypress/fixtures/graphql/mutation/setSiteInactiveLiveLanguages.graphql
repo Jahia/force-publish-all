@@ -1,0 +1,9 @@
+mutation SetSiteInactiveLiveLanguages($sitePath: String!, $languages: [String]) {
+    jcr {
+        mutateNode(pathOrId: $sitePath) {
+            mutateProperty(name: "j:inactiveLiveLanguages") {
+                setValues(values: $languages)
+            }
+        }
+    }
+}
