@@ -19,6 +19,9 @@ updates:
       # frontend-maven-plugin 2.x requires a Java 17 Maven runtime
       - dependency-name: "com.github.eirslett:frontend-maven-plugin"
         update-types: ["version-update:semver-major"]
+      # JUnit 6 requires Java 17; the module builds on JDK 11
+      - dependency-name: "org.junit.jupiter:*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/"
