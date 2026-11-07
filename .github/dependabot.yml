@@ -64,6 +64,19 @@ updates:
       # stylelint 17+ requires Node >= 22.22
       - dependency-name: "stylelint"
         update-types: ["version-update:semver-major"]
+      # This UI is still on React 16 + Material-UI 3; these need React 18 / a MUI migration (2026-11):
+      # moonstone 2.12+ peers react ^18.3.1
+      - dependency-name: "@jahia/moonstone"
+        versions: [">=2.12.0"]
+      # data-helper 1.1.x+ moves from react-apollo 3 to @apollo/client 3
+      - dependency-name: "@jahia/data-helper"
+        versions: [">=1.1.0"]
+      # Material-UI 4 is a breaking UI migration
+      - dependency-name: "@material-ui/core"
+        update-types: ["version-update:semver-major"]
+      # @testing-library/react 13+ requires React 18
+      - dependency-name: "@testing-library/react"
+        versions: [">=13.0.0"]
 
   - package-ecosystem: "npm"
     directory: "/tests"
