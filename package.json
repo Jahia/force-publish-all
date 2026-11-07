@@ -76,6 +76,7 @@
   "resolutions": {
     "**/@jest/reporters/glob": "^14.0.3",
     "**/@typescript-eslint/typescript-estree/minimatch": "^11.0.5",
+    "**/git-branch/findup-sync": "^5.0.0",
     "**/jest-config/glob": "^14.0.3",
     "**/jest-runtime/glob": "^14.0.3",
     "**/test-exclude/glob": "^14.0.3",
