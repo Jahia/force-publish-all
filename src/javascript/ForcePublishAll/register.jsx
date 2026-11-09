@@ -6,8 +6,8 @@ import {ForcePublishAllActionComponent} from './ForcePublishAllComponent';
 export default function () {
     registry.add('action', 'forcePublishAll', {
         buttonIcon: <CloudUpload/>,
-        buttonLabel: 'force-publish-all:label.action.forcePublishAll',
-        buttonLabelShort: 'force-publish-all:label.action.forcePublishAll',
+        buttonLabel: 'forcePublishAll:label.action.forcePublishAll',
+        buttonLabelShort: 'forcePublishAll:label.action.forcePublishAll',
         targets: ['publishMenu:99'],
         component: ForcePublishAllActionComponent
     });
