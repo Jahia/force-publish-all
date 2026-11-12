@@ -24,6 +24,3 @@ coverage
 
 # Jahia DX Studio
 repository.xml.generated
-
-
-tests/yarn.lock
