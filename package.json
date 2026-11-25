@@ -101,7 +101,8 @@
     "strip-ansi": "^6.0.1",
     "tmp": "^0.2.6",
     "wrap-ansi": "^7.0.0",
-    "ws": "^7.5.11"
+    "ws": "^7.5.11",
+    "node-gyp": "^12.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.13",
