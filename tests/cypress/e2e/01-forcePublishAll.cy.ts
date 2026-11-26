@@ -1,4 +1,5 @@
 import { DocumentNode } from 'graphql'
+import { waitAllJobsFinished } from '@jahia/cypress'
 
 describe('Force Publish All', () => {
     const siteKey = 'digitall'
@@ -58,6 +59,10 @@ describe('Force Publish All', () => {
             )
             // After forcePublish, the node should once again be available in LIVE
             .then(() => waitForNodeInLive(targetPath))
+            // ...and the whole publication job must be over before the next test: the node reappears in LIVE
+            // long before the job has republished its 200+ descendants, and a force publication of one of them
+            // meanwhile collides with the job's writes (InvalidItemStateException: stale item).
+            .then(() => waitAllJobsFinished(`Force publication of ${targetPath} still running`, 120000))
     })
 
     it('forcePublish returns true on an unpublished node and publishes it to LIVE', () => {
